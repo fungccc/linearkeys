@@ -506,6 +506,63 @@
             .mode-btn { padding: 8px 12px; font-size: 0.85rem; min-width: auto; }
         }
     </style>
+    
+    <script type="module">
+  // 1. 匯入 Firebase 必要函式
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+  // 2. 貼上你在 Firebase Console 拿到的設定
+  // TODO: 請替換成你自己專案的設定值
+  const firebaseConfig = {
+    apiKey: "AIzaSyBrIk3QqszSo09g9tQjMbVkBpkTv-oduZo",
+    authDomain: "linearkeys-7e9a9.firebaseapp.com",
+    projectId: "linearkeys-7e9a9",
+  storageBucket: "linearkeys-7e9a9.firebasestorage.app",
+  messagingSenderId: "239796987538",
+  appId: "1:239796987538:web:710f0e600c60254827284b",
+  measurementId: "G-HKLJJ24JXG"
+  };
+
+  // 3. 初始化 Firebase Analytics
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+
+  // 4. 設定按鈕追蹤邏輯
+  // 我們不需要修改原本的 setMode 函式，直接用 ID 監聽點擊即可
+  // 你的按鈕 ID 分別是：btnMajorSharps, btnMinorSharps, btnMajorFlats, btnMinorFlats
+  
+  const buttonIds = ['btnMajorSharps', 'btnMinorSharps', 'btnMajorFlats', 'btnMinorFlats'];
+
+  buttonIds.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        // 抓取按鈕上的文字 (例如 "Major Sharps") 或 ID 作為參數
+        const buttonName = btn.innerText || id;
+        
+        // 發送事件到 Firebase
+        logEvent(analytics, 'mode_button_click', {
+          button_name: buttonName, // 參數：按鈕名稱
+          mode_id: id              // 參數：按鈕 ID
+        });
+
+        console.log(`Firebase Event Sent: mode_button_click - ${buttonName}`);
+      });
+    }
+  });
+
+  // 5. (選用) 追蹤語言切換
+  const langSelect = document.getElementById('langSelect');
+  if(langSelect) {
+      langSelect.addEventListener('change', (e) => {
+          logEvent(analytics, 'language_change', {
+              selected_language: e.target.value
+          });
+      });
+  }
+</script>
+
 </head>
 <body>
 
