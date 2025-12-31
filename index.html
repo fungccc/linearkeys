@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Linear Geometry of Key Signatures</title>
+    <meta name="description" content="A new music theory visualization: The 0-2-4-6-1-3-5-7 Linear Sequence.">
+    <style>
+        /* --- 基礎設定 (Base Styles) --- */
+        :root{
+          --bg-color: #f8f9fa;
+          --text-color: #2d3748;
+          --paper-bg: #ffffff;
+          --primary-color: #2c3e50;
+          --major-color: #e74c3c;
+          --minor-color: #3498db;
+          
+          --even-color: #2b6cb0;  /* 偶數群：藍 */
+          --odd-color:  #dd6b20;  /* 奇數群：橘 */
+          --transition-color: #6b46c1; /* 跨群：紫 */
+        }
+
+        /* 主音鍵：奇偶群顏色 */
+        .key.tonic-even .num-tag,
+        .key.tonic-even .note-tag { color: var(--even-color) !important; }
+
+        .key.tonic-odd .num-tag,
+        .key.tonic-odd .note-tag { color: var(--odd-color) !important; }
+
+        /* 主音鍵外框提示（白鍵/黑鍵） */
+        .key.tonic-even.white { box-shadow: inset 0 0 0 3px rgba(43,108,176,.28); }
+        .key.tonic-odd.white  { box-shadow: inset 0 0 0 3px rgba(221,107,32,.28); }
+        .key.tonic-even.black { box-shadow: 0 0 0 2px rgba(43,108,176,.50); }
+        .key.tonic-odd.black  { box-shadow: 0 0 0 2px rgba(221,107,32,.50); }
+
+        /* 主音音名標籤 */
+        .note-tag{
+          position:absolute;
+          bottom: 42px;
+          font-size: 12px;
+          font-weight: 800;
+          opacity: .95;
+          pointer-events:none;
+        }
+        .black .note-tag{ bottom: 34px; font-size: 11px; }
+
+        /* 全音/半音標示（在鍵盤上方） */
+        #piano{ position: relative; }
+        .piano-wrapper{ overflow-y: visible; }
+
+        .interval-layer{
+          position:absolute;
+          left:0;
+          top:-18px;
+          width:100%;
+          height:18px;
+          pointer-events:none;
+          z-index: 10;
+        }
+
+        .interval-label{
+          position:absolute;
+          transform: translateX(-50%);
+          font-size: 12px;
+          font-weight: 900;
+          padding: 2px 6px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.92);
+          border: 1px solid rgba(0,0,0,.08);
+          line-height: 1;
+          white-space: nowrap;
+        }
+
+        /* ✅ interval 顏色：依「所在群」決定 */
+        .interval-label.even { color: var(--even-color); border-color: rgba(43,108,176,.25); }
+        .interval-label.odd  { color: var(--odd-color);  border-color: rgba(221,107,32,.25); }
+        .interval-label.transition { color: var(--transition-color); border-color: rgba(107,70,193,.25); }
+
+        /* ===== Figure 2 Styles ===== */
+        .fig2{
+          margin: 26px 0;
+          padding: 16px;
+          background: #f7fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+        }
+        .fig2-caption{
+          text-align:center;
+          font-weight: 900;
+          margin-bottom: 14px;
+          color: var(--primary-color);
+        }
+        .fig2-subhead{
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 10px;
+        }
+        .fig2-subtitle,
+        .fig2-direction{
+          font-weight: 900;
+          padding: 6px 10px;
+          background: #f7fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 999px;
+          white-space: nowrap;
+          color:#2d3748;
+          font-size: 0.9em;
+        }
+        .fig2-direction .arrow{
+          font-size: 16px;
+          margin-left: 6px;
+        }
+        .fig2-direction.left .arrow{
+          margin-left: 0;
+          margin-right: 6px;
+        }
+        .fig2-row{
+          display:flex;
+          gap:10px;
+          align-items:flex-start;
+        }
+        .fig2-row .row-label{
+          width: 120px;
+          flex-shrink: 0;
+          font-weight: 900;
+          color: #4a5568;
+          padding-top: 6px;
+          font-size: 0.9em;
+        }
+        .fig2-row .mini-wrapper{
+          overflow-x:auto;
+          padding-bottom: 8px;
+          width: 100%;
+        }
+
+        /* mini piano (shared styles for figures) */
+        .mini-piano{
+          display:flex;
+          position:relative;
+        }
+        .mini-piano .key{ cursor: default; pointer-events: none; } /* Disable interaction on figures */
+        
+        .fig2 .key.white, .fig1 .key.white{
+          width: 22px;
+          height: 110px;
+          padding-bottom: 10px;
+        }
+        .fig2 .key.black, .fig1 .key.black{
+          width: 14px;
+          height: 70px;
+          margin-left: -7px;
+          margin-right: -7px;
+          padding-bottom: 6px;
+        }
+        .fig2 .note-tag, .fig1 .note-tag{ bottom: 28px; font-size: 10px; }
+        .fig2 .black .note-tag, .fig1 .black .note-tag{ bottom: 22px; font-size: 9px; }
+        .fig2 .num-tag, .fig1 .num-tag{ font-size: 14px; }
+        .fig2 .black .num-tag, .fig1 .black .num-tag{ font-size: 12px; bottom: 6px; }
+        
+        /* Force colors in figures */
+        .fig2 .key.tonic-even .num-tag, .fig2 .key.tonic-even .note-tag,
+        .fig1 .key.tonic-even .num-tag, .fig1 .key.tonic-even .note-tag{ color: var(--even-color) !important; }
+        .fig2 .key.tonic-odd .num-tag, .fig2 .key.tonic-odd .note-tag,
+        .fig1 .key.tonic-odd .num-tag, .fig1 .key.tonic-odd .note-tag{ color: var(--odd-color) !important; }
+
+        /* ===== Figure 2 Grid ===== */
+        .fig2-grid{
+          display:grid;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 14px;
+        }
+        .fig2-card{
+          background:#fff;
+          border:1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px;
+        }
+
+        /* ===== Figure 1 Styles ===== */
+        .fig1{
+          margin: 26px 0;
+          padding: 16px;
+          background: #f7fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+        }
+        .fig1-caption{
+          text-align:center;
+          font-weight: 900;
+          margin-bottom: 14px;
+          color: var(--primary-color);
+        }
+        .fig1-grid{
+          display:grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 14px;
+        }
+        .fig1-card{
+          background:#fff;
+          border:1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px;
+        }
+        .fig1-title{
+          font-weight: 900;
+          color: #2d3748;
+          margin-bottom: 10px;
+          font-size: 0.95em;
+        }
+        .fig1 .mini-wrapper{
+          overflow-x:auto;
+          overflow-y: visible;
+          padding-bottom: 8px;
+        }
+        .fig1 .mini-piano{
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+        .fig1 .interval-layer{
+            position:absolute;
+            left:0;
+            top:-18px;
+            width:100%;
+            height:18px;
+            pointer-events:none;
+            z-index: 10;
+        }
+        .fig1 .interval-label{
+            position:absolute;
+            transform: translateX(-50%);
+            font-size: 10px; /* Slightly smaller for mini piano */
+            font-weight: 900;
+            padding: 1px 5px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.92);
+            border: 1px solid rgba(0,0,0,.08);
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        /* Main Layout */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--paper-bg);
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-radius: 12px;
+        }
+
+        .lang-switch {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        h1.main-title {
+            text-align: center;
+            font-size: 2.2em;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            margin-bottom: 40px;
+        }
+
+        /* Interactive Section */
+        .interactive-section {
+            background: #edf2f7;
+            padding: 30px 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 50px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            padding: 8px 20px;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fff;
+            color: #555;
+            min-width: 110px;
+        }
+
+        .mode-btn:hover { transform: translateY(-1px); background: #f7fafc; }
+
+        .mode-btn.active-major {
+            background: var(--major-color) !important;
+            color: white !important;
+            border-color: var(--major-color) !important;
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3);
+        }
+
+        .mode-btn.active-minor {
+            background: var(--minor-color) !important;
+            color: white !important;
+            border-color: var(--minor-color) !important;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+
+        .piano-wrapper {
+            display: flex;
+            justify-content: flex-start; 
+            overflow-x: auto;
+            padding: 20px 10px;
+            margin-top: 10px;
+            scrollbar-width: thin;
+        }
+
+        .piano {
+            display: flex;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .key {
+            position: relative;
+            border: 1px solid #bbb;
+            border-radius: 0 0 4px 4px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            cursor: pointer;
+            transition: all 0.1s;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .white {
+            width: 40px;
+            height: 200px;
+            background: white;
+            z-index: 1;
+            padding-bottom: 15px;
+            font-weight: bold;
+            color: #ddd;
+        }
+
+        .black {
+            width: 26px;
+            height: 130px;
+            background: #333;
+            z-index: 2;
+            margin-left: -13px;
+            margin-right: -13px;
+            color: #666;
+            align-items: center;
+            padding-bottom: 5px;
+        }
+
+        .num-tag {
+            font-size: 20px;
+            font-weight: 800;
+            opacity: 1;
+        }
+        .white .num-tag { bottom: 15px; position: absolute;}
+        .black .num-tag { bottom: 10px; font-size: 16px; position: absolute; color: #f1c40f;}
+
+        /* Info Panel */
+        .info-panel {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: var(--primary-color);
+            min-height: 180px; 
+            font-weight: 500;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        #vexflow-container {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #vexflow-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Article Styles */
+        article {
+            border-top: 2px solid #eee;
+            padding-top: 40px;
+            font-family: "Georgia", "Times New Roman", serif;
+        }
+
+        .abstract-box {
+            background: #f9f9f9;
+            padding: 20px 30px;
+            border-left: 4px solid var(--major-color);
+            margin-bottom: 40px;
+            font-style: italic;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        h2 { 
+            font-size: 1.5em; 
+            color: var(--primary-color); 
+            margin-top: 35px; 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 10px; 
+            font-family: -apple-system, sans-serif; 
+        }
+        
+        h3 {
+             font-size: 1.2em;
+             color: #444;
+             margin-top: 25px;
+             font-family: -apple-system, sans-serif;
+             font-weight: 600;
+        }
+
+        p { margin-bottom: 15px; text-align: justify; }
+
+        .formula-block {
+            text-align: center;
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 1.0em;
+            overflow-x: auto;
+        }
+
+        .sequence-highlight {
+            font-family: monospace;
+            background: #eef2f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #c0392b;
+            font-weight: bold;
+        }
+        
+        ul, ol {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+
+        footer { 
+            text-align: center; 
+            margin-top: 60px; 
+            border-top: 1px solid #eee; 
+            padding-top: 20px; 
+            color: #888;
+            font-size: 0.9em;
+        }
+        footer a { color: #555; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1.main-title { font-size: 1.6em; }
+            .mode-btn { padding: 8px 12px; font-size: 0.85rem; min-width: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="lang-switch">
+        <select id="langSelect" onchange="changeLanguage(this.value)">
+            <option value="en">English</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="it">Italiano</option>
+            <option value="ru">Русский</option>
+            <option value="ja">日本語</option>
+        </select>
+    </div>
+
+    <h1 class="main-title" id="pageTitle">The Linear Geometry of Key Signatures</h1>
+    <p class="subtitle" id="pageSubtitle">An Intuitive Mapping on the Keyboard Space</p>
+
+    <div class="interactive-section">
+        <div style="font-weight:bold; color:#888; margin-bottom:15px; text-transform:uppercase; letter-spacing:1px; font-size:0.8em;" id="demoLabel">Interactive Demonstration</div>
+        
+       <div class="controls">
+            <button class="mode-btn active-major" id="btnMajorSharps" onclick="setMode('majorSharps')">Major Sharps</button>
+            <button class="mode-btn" id="btnMinorSharps" onclick="setMode('minorSharps')">Minor Sharps</button>
+            <button class="mode-btn" id="btnMajorFlats" onclick="setMode('majorFlats')">Major Flats</button>
+            <button class="mode-btn" id="btnMinorFlats" onclick="setMode('minorFlats')">Minor Flats</button>
+        </div>
+
+
+        <div class="piano-wrapper">
+            <div class="piano major-mode" id="piano">
+                </div>
+        </div>
+        <div class="info-panel" id="interactionInfo">
+            Hover over keys to explore
+        </div>
+    </div>
+
+    <article id="articleContent">
+        </article>
+
+    <footer>
+        <p>&copy; 2026 Fung, Linear Key Signature Theory. All rights reserved.
+        <BR>Draft version. A revised manuscript will be submitted for peer review.
+        <p>Contact: <a href="mailto:linearkeys@gmail.com">linearkeys@gmail.com</a></p>
+    </footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script>
+    // --- 1. Content Database (Multilingual) ---
+    // Content fully updated based on "鍵盤上的調號幾何_EN.docx" with academic translations.
+
+    const contentDB = {
+        "en": {
+            ui: {
+                title: "The Linear Geometry of Key Signatures",
+                subtitle: "A Theoretical Analysis of the Linear Sequence 0–2–4–6–1–3–5–7",
+                demoLabel: "Interactive Demonstration",
+                instruction: "Hover over keys to see: Tonic & Number of Accidentals",
+                btnMajor: "Major",
+                btnMinor: "Minor",
+                btnMajorSharps: "Major Sharps",
+                btnMinorSharps: "Minor Sharps",
+                btnMajorFlats: "Major Flats",
+                btnMinorFlats: "Minor Flats",
+                termMajor: "Major",
+                termMinor: "Minor",
+                termSharps: "Sharps",
+                termFlats: "Flats",
+                termNatural: "Natural",
+                termWholeStep: "W",
+                termHalfStep: "H",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>Abstract:</b> This study reveals a geometric regularity underlying the key-signature system as realized on the piano keyboard. By mapping the number of sharps in major-key signatures onto spatial positions on the keyboard, the study identifies a highly systematic distribution of tonics that forms the linear sequence 0–2–4–6–1–3–5–7, which corresponds strictly to the intervallic pattern “whole tone–whole tone–whole tone–semitone–whole tone–whole tone–whole tone.” This sequence follows a rule of “whole-tone leaps by +2, with semitone shifts marking group transitions,” and major and minor keys share the same directional regularity (right = sharps, left = flats). In contrast to the traditional Circle of Fifths memorization approach, this method enables learners to infer the number of accidentals directly from spatial positions on the keyboard, thereby offering a new geometric framework for the visualization of music-theoretical instruction.
+                </div>
+
+                <h2>I. Introduction</h2>
+                <p>In Western tonal music, the key signature is often treated as knowledge that can only be mastered through rote memorization. Traditionally, the Circle of Fifths has been regarded as the most important visual tool for understanding key-signature relationships, used to represent the intervallic relations among the twelve major and minor keys and the regular pattern by which the number of accidentals changes.[1] However, research suggests that when students learn the Circle of Fifths they often concentrate on memorizing the circular diagram itself rather than genuinely understanding the intervallic structure and logic that underlie it.[2]</p>
+                <p>At the same time, educational practice indicates that visual aids are particularly effective in helping students identify and remember key signatures,[3] and the visual and tactile affordances of the piano keyboard can further concretize otherwise abstract musical concepts.[4] When we map the number of accidentals in a key signature directly onto the spatial structure of the keyboard, a geometric order—one that has not previously been systematically examined—becomes evident.</p>
+
+                <h2>II. Core Finding: The 0–2–4–6–1–3–5–7 Sequence</h2>
+                <p>By examining the distribution of major-key tonics associated with sharp keys on the keyboard, we find that although the number of accidentals changes in a numerically discontinuous fashion, its spatial-geometric arrangement is highly regular. Taking <b>C major (N = 0)</b> as the point of departure, we can align major-key tonics with the number of accidentals as the following two sequences:</p>
+                <ul>
+                    <li><b>Even Group:</b> 0 (C) → 2 (D) → 4 (E) → 6 (F♯)</li>
+                    <li><b>Odd Group:</b> 1 (G) → 3 (A) → 5 (B) → 7 (C♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>III. Spatial Structure and the Whole-Tone Principle</h2>
+                <p>The 0–2–4–6–1–3–5–7 sequence is not an arbitrary ordering; rather, it corresponds strictly to the intervallic distances among the relevant tonics on the keyboard. More strikingly, its intervallic structure conforms exactly to the following pattern:</p>
+
+                <div class="formula-block">
+                    T — T — T — S — T — T — T<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(Whole Tone — Whole Tone — Whole Tone — Semitone — Whole Tone — Whole Tone — Whole Tone)</span>
+                </div>
+
+                <h3>3.1 The Whole-Tone Leap Rule (the “+2 Rule”)</h3>
+                <p>On the keyboard, whenever the tonic advances by one <span class="sequence-highlight">whole tone</span> within the diatonic framework, the corresponding key-signature number N increases by 2. For example:</p>
+                <ul>
+                    <li>C (N = 0) → D (N = 2): a whole tone; N increases by 2</li>
+                    <li>D (N = 2) → E (N = 4): a whole tone; N increases by 2</li>
+                    <li>E (N = 4) → F♯ (N = 6): a whole tone; N increases by 2</li>
+                </ul>
+
+                <h3>3.2 The Semitone Shift (Group Transition)</h3>
+                <p>When the sequence moves from the even group to the odd group (for instance, from 6 to 1—that is, from F♯ to G), the keyboard presents precisely a <span class="sequence-highlight">semitone</span> interval, marking a “group transition” in the geometric path. This change is not a simple incremental increase in the number of accidentals; it is a structural shift:</p>
+                <ul>
+                    <li>F♯ (N = 6) → G (N = 1): a semitone; N moves from the even group to the odd group</li>
+                </ul>
+                <p>Thereafter, the odd group again follows the +2 rule internally.</p>
+
+                <h3>3.3 Pedagogical Application</h3>
+                <p>Rather than relying on traditional Circle of Fifths mnemonics, learners need only follow a visual pathway on the keyboard: “add 2 to N with each whole-tone advance; switch groups at the semitone.” In doing so, they can systematically derive the key-signature numbers for all sharp major keys. This approach translates the abstract concept of key signature into a concrete, visible—and even tactile—movement through keyboard space.</p>
+
+                <h2>IV. A Unified Framework for Major and Minor Keys</h2>
+                <p>The foregoing regularities exhibit mode-invariant generality: they apply not only to major keys but equally to their relative minors. More importantly, both major and minor systems possess a spatial reference point that can serve as a “zero point,” allowing the two to be described within a single linear-geometric framework.</p>
+
+                <h3>4.1 Reference Point for Major Keys</h3>
+                <p>Beginning from <b>C (N = 0)</b>:</p>
+                <ul>
+                    <li>An increase in sharps corresponds to motion to the <b>right</b> on the keyboard.</li>
+                    <li>An increase in flats corresponds to motion to the <b>left</b> on the keyboard.</li>
+                </ul>
+
+                <h3>4.2 Reference Point for Minor Keys</h3>
+                <p>Beginning from <b>A (N = 0)</b>, the same directional regularity holds:</p>
+                <ul>
+                    <li>Sharps increase to the <b>right</b> on the keyboard.</li>
+                    <li>Flats increase to the <b>left</b> on the keyboard.</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 A Shared Directional Principle</h3>
+                <p>Major and minor keys take the starting point of their respective diatonic collections—C and A—as the “key-signature zero point,” and they share the same directional rule: <span class="sequence-highlight">Rightward = more sharps; Leftward = more flats</span>. This directional consistency means that the 0–2–4–6–1–3–5–7 sequence can describe not only the sharp-based system, but also—through mirror inversion—maps naturally onto the flat-based system, thereby forming a unified linear-geometric model that spans major/minor and sharps/flats.</p>
+
+                <h2>V. Conclusion</h2>
+                <p>This study reframes key-signature knowledge—traditionally approached as a memorization burden—into a linear geometric structure that can be observed directly on the keyboard. For pianists and for students who favor visual modes of learning, this approach offers a new pathway that bypasses the conventional circular diagram, enabling learners to read tonality and the number of accidentals directly from spatial positions on the keys.[5] More importantly, the geometric order revealed by the 0–2–4–6–1–3–5–7 sequence suggests that the key-signature system is not an arbitrary convention, but is instead deeply grounded in an intrinsic mathematical relationship between the keyboard and the diatonic collection.</p>
+
+                <hr>
+                <h3>References</h3>
+                <ol style="font-size:0.9em; color:#555;">
+                    <li>Berklee Online. “Circle of Fifths: The Key to Unlocking Harmonic Understanding.” October 8, 2025.</li>
+                    <li>Bergman, Åsa. “Circumscribing Tonality: Upper Secondary Music Students Learning the Circle of Fifths.” PhD diss., University of Gothenburg, 2020.</li>
+                    <li>“How To Teach Key Signatures.” Magic of Music Ed (blog). March 1, 2025.</li>
+                    <li>“How the Piano Keyboard Helps Students Understand Music Theory.” Music in Our Homeschool (blog). June 12, 2025.</li>
+                    <li>Chenette, Timothy, et al. “The Circle of Fifths.” In <i>Fundamentals, Function, and Form: Theory and Analysis of Tonal Western Art Music</i>. Milne Open Textbooks, 2021.</li>
+                </ol>
+            `
+        },
+
+        "zh-TW": {
+            ui: {
+                title: "鍵盤上的調號幾何",
+                subtitle: "0–2–4–6–1–3–5–7 線性序列的理論分析",
+                demoLabel: "互動展示",
+                instruction: "請滑動琴鍵查看：調性主音與升/降記號數量",
+                btnMajor: "大調",
+                btnMinor: "小調",
+                btnMajorSharps: "大調升記號",
+                btnMinorSharps: "小調升記號",
+                btnMajorFlats: "大調降記號",
+                btnMinorFlats: "小調降記號",
+                termMajor: "大調",
+                termMinor: "小調",
+                termSharps: "個升記號",
+                termFlats: "個降記號",
+                termNatural: "無升降記號",
+                termWholeStep: "全",
+                termHalfStep: "半",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>摘要：</b> 本研究揭示了調號系統在鋼琴鍵盤上的幾何規律。透過將升記號大調的調號數量映射至鍵盤空間位置，發現其主音分佈呈現高度規整的 0-2-4-6-1-3-5-7 線性序列，嚴格對應「全—全—全—半—全—全—全」的音程結構。此序列遵循「全音跳躍加 2、半音切換群組」的法則，且大小調共享相同的方向性規律（右側＝升記號，左側＝降記號）。相較於傳統五度圈的記憶法，此方法允許學習者直接從琴鍵空間位置推導變音記號的數量，為音樂理論教學的視覺化提供了新的幾何框架。
+                </div>
+
+                <h2>一、 引言</h2>
+                <p>在西方調性音樂中，調號（Key Signature）往往被視為必須透過死記硬背才能掌握的知識。傳統上，五度圈（Circle of Fifths）被視為理解調號關係最重要的視覺化工具，用於展示十二個大小調之間的音程關係與變音記號數量的變化規律。[1] 然而，研究顯示學生在學習五度圈時，往往專注於記憶圓形圖表本身，而非真正理解其背後的音程結構與邏輯。[2]</p>
+                <p>同時，教育實踐指出視覺輔助工具對於幫助學生識別和記憶調號特別有效，[3] 而鋼琴鍵盤的視覺與觸覺特性更能使抽象的音樂概念具體化。[4] 當我們將調號中的變音記號數量直接映射（Mapping）到鋼琴鍵盤的空間結構之上時，一個先前未被系統化檢視的幾何秩序隨即浮現。</p>
+
+                <h2>二、 核心發現：0-2-4-6-1-3-5-7 序列</h2>
+                <p>透過觀察升記號大調主音在鍵盤上的位置分佈，我們發現：雖然變音記號數量的變化在數值上呈現非連續性的跳躍，但其空間幾何排列卻高度規整。以 <b>C 大調（N=0）</b> 為起點，我們可以將大調主音與調號數量對應為以下兩組數列：</p>
+                <ul>
+                    <li><b>偶數群 (Even Group)：</b> 0 (C) → 2 (D) → 4 (E) → 6 (F♯)</li>
+                    <li><b>奇數群 (Odd Group)：</b> 1 (G) → 3 (A) → 5 (B) → 7 (C♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>三、 空間結構與全音定律</h2>
+                <p>這組 0-2-4-6-1-3-5-7 數列並非任意排列，而是嚴格對應於鍵盤上相關主音之間的音程距離。更令人注目的是，其音程結構完全符合下列模式：</p>
+
+                <div class="formula-block">
+                    全 — 全 — 全 — 半 — 全 — 全 — 全<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(全音 — 全音 — 全音 — 半音 — 全音 — 全音 — 全音)</span>
+                </div>
+
+                <h3>3.1 全音跳躍法則 (+2 Rule)</h3>
+                <p>在鍵盤上，每當主音在自然音階（Diatonic collection）的框架內前進一個<span class="sequence-highlight">全音</span>時，對應的調號數量 N 便增加 2。例如：</p>
+                <ul>
+                    <li>C (N = 0) → D (N = 2)：全音；N 增加 2</li>
+                    <li>D (N = 2) → E (N = 4)：全音；N 增加 2</li>
+                    <li>E (N = 4) → F♯ (N = 6)：全音；N 增加 2</li>
+                </ul>
+
+                <h3>3.2 半音轉換法則（群組切換）</h3>
+                <p>當數列由偶數群轉入奇數群（例如由 6 移至 1，即 F♯ 至 G）時，鍵盤上正好呈現一個<span class="sequence-highlight">半音</span>音程，標誌著幾何路徑中的「群組切換」。這個轉換不是變音記號數量的簡單遞增，而是一個結構性的位移：</p>
+                <ul>
+                    <li>F♯ (N = 6) → G (N = 1)：半音；N 從偶數群轉入奇數群</li>
+                </ul>
+                <p>此後，奇數群內部再度遵循 +2 法則。</p>
+
+                <h3>3.3 教學應用</h3>
+                <p>學習者無需依賴傳統五度圈的口訣，只需在鍵盤上遵循一條視覺路徑：「全音前進時 N 加 2，半音時切換群組」。藉此，便能系統性推導出所有升記號大調的調號數量。這種方法將抽象的調號概念轉化為具體的、可視的、甚至是可觸摸的鍵盤空間運動。</p>
+
+                <h2>四、 大小調的統一架構</h2>
+                <p>上述規律具有跨調性（mode-invariant）的普適性，不僅適用於大調，同樣適用於其關係小調。更重要的是，大調與小調皆存在一個可作為「零點」的空間基準，使兩者能在同一線性幾何架構下被描述。</p>
+
+                <h3>4.1 大調的基準點</h3>
+                <p>以 <b>C (N = 0)</b> 為起點：</p>
+                <ul>
+                    <li>升記號的增加對應於鍵盤<b>向右</b>移動。</li>
+                    <li>降記號的增加對應於鍵盤<b>向左</b>移動。</li>
+                </ul>
+
+                <h3>4.2 小調的基準點</h3>
+                <p>以 <b>A (N = 0)</b> 為起點，遵循相同的方向性規律：</p>
+                <ul>
+                    <li>升記號沿鍵盤<b>向右</b>遞增。</li>
+                    <li>降記號沿鍵盤<b>向左</b>遞增。</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 共享的方向性原則</h3>
+                <p>大調與小調皆以其各自自然音階的起點——C 與 A——作為「調號零點」，並共享相同的方向規則：<span class="sequence-highlight">向右＝更多升記號；向左＝更多降記號</span>。這種方向的一致性意味著 0-2-4-6-1-3-5-7 序列不僅能描述升記號系統，透過鏡像反轉，也能自然對應於降記號系統，從而形成一套涵蓋大小調與升降記號的統一線性幾何模型。</p>
+
+                <h2>五、 結論</h2>
+                <p>本研究將傳統上被視為記憶負擔的調號知識，重構為可在鍵盤上直接觀察的線性幾何結構。對於鋼琴演奏者及偏好視覺化學習的學生而言，此方法提供了一條繞過傳統圓形圖表的新路徑，使其能直接從琴鍵的空間位置讀取調性與變音記號數量。[5] 更重要的是，0-2-4-6-1-3-5-7 序列所揭示的幾何秩序顯示，調號系統並非任意的約定俗成，而是深深植基於鍵盤與自然音階之間的內在數學關係之中。</p>
+            `
+        },
+
+        "de": {
+            ui: {
+                title: "Die lineare Geometrie der Vorzeichen",
+                subtitle: "Eine theoretische Analyse der linearen Sequenz 0–2–4–6–1–3–5–7",
+                demoLabel: "Interaktive Demonstration",
+                instruction: "Bewegen Sie den Cursor über die Tasten: Tonika & Anzahl der Vorzeichen",
+                btnMajor: "Dur",
+                btnMinor: "Moll",
+                btnMajorSharps: "Dur (Kreuz)",
+                btnMinorSharps: "Moll (Kreuz)",
+                btnMajorFlats: "Dur (B)",
+                btnMinorFlats: "Moll (B)",
+                termMajor: "-Dur",
+                termMinor: "-Moll",
+                termSharps: "Kreuz(e)",
+                termFlats: "B(s)",
+                termNatural: "Ohne Vorzeichen",
+                termWholeStep: "G",
+                termHalfStep: "H",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>Zusammenfassung:</b> Diese Studie enthüllt eine geometrische Regelmäßigkeit, die dem auf der Klaviertastatur realisierten Vorzeichensystem zugrunde liegt. Durch die Abbildung der Anzahl der Kreuzvorzeichen in Dur-Tonarten auf räumliche Positionen der Tastatur identifiziert die Studie eine hochgradig systematische Verteilung der Toniken, die die lineare Sequenz 0–2–4–6–1–3–5–7 bildet. Diese entspricht strikt dem Intervallmuster „Ganzton–Ganzton–Ganzton–Halbton–Ganzton–Ganzton–Ganzton“. Die Sequenz folgt der Regel: „Ganztonschritte um +2, mit Halbtonschritten als Gruppenübergänge“, wobei Dur- und Moll-Tonarten dieselbe Richtungsregularität teilen (rechts = Kreuze, links = Bs). Im Gegensatz zum traditionellen Auswendiglernen des Quintenzirkels ermöglicht diese Methode Lernenden, die Anzahl der Akzidentien direkt aus den räumlichen Positionen auf der Tastatur abzuleiten, und bietet somit einen neuen geometrischen Rahmen für die Visualisierung in der musiktheoretischen Unterweisung.
+                </div>
+
+                <h2>I. Einleitung</h2>
+                <p>In der westlichen tonalen Musik werden Tonartvorzeichnungen (Key Signatures) oft als Wissen behandelt, das nur durch mechanisches Auswendiglernen angeeignet werden kann. Traditionell gilt der Quintenzirkel als das wichtigste visuelle Werkzeug zum Verständnis der Tonartenverwandtschaft, um die Intervallbeziehungen zwischen den zwölf Dur- und Moll-Tonarten sowie das Muster der Vorzeichenänderungen darzustellen.[1] Forschungen legen jedoch nahe, dass Schüler beim Erlernen des Quintenzirkels sich oft auf das Memorieren des kreisförmigen Diagramms selbst konzentrieren, anstatt die zugrunde liegende Intervallstruktur und Logik wirklich zu verstehen.[2]</p>
+                <p>Gleichzeitig zeigt die pädagogische Praxis, dass visuelle Hilfsmittel besonders effektiv sind, um Schülern beim Identifizieren und Erinnern von Vorzeichen zu helfen,[3] und die visuellen und haptischen Eigenschaften der Klaviertastatur können ansonsten abstrakte musikalische Konzepte konkretisieren.[4] Wenn wir die Anzahl der Akzidentien einer Tonart direkt auf die räumliche Struktur der Tastatur abbilden, wird eine geometrische Ordnung sichtbar, die bisher nicht systematisch untersucht wurde.</p>
+
+                <h2>II. Zentrale Erkenntnis: Die 0–2–4–6–1–3–5–7-Sequenz</h2>
+                <p>Bei der Untersuchung der Verteilung der Dur-Toniken mit Kreuzvorzeichen auf der Tastatur stellen wir fest, dass die Anzahl der Akzidentien zwar numerisch diskontinuierlich variiert, ihre räumlich-geometrische Anordnung jedoch höchst regelmäßig ist. Nimmt man <b>C-Dur (N = 0)</b> als Ausgangspunkt, lassen sich die Dur-Toniken und ihre Vorzeichenanzahl in zwei Sequenzen ordnen:</p>
+                <ul>
+                    <li><b>Gerade Gruppe (Even Group):</b> 0 (C) → 2 (D) → 4 (E) → 6 (F♯)</li>
+                    <li><b>Ungerade Gruppe (Odd Group):</b> 1 (G) → 3 (A) → 5 (H) → 7 (C♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>III. Räumliche Struktur und das Ganztonprinzip</h2>
+                <p>Die Sequenz 0–2–4–6–1–3–5–7 ist keine willkürliche Anordnung; vielmehr entspricht sie strikt den Intervallabständen zwischen den relevanten Toniken auf der Tastatur. Auffallenderweise stimmt ihre interne Intervallstruktur exakt mit folgendem Muster überein:</p>
+
+                <div class="formula-block">
+                    G — G — G — H — G — G — G<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(Ganzton — Ganzton — Ganzton — Halbton — Ganzton — Ganzton — Ganzton)</span>
+                </div>
+
+                <h3>3.1 Die Ganzton-Sprung-Regel (die „+2-Regel“)</h3>
+                <p>Wann immer die Tonika auf der Tastatur innerhalb des diatonischen Rahmens um einen <span class="sequence-highlight">Ganzton</span> fortschreitet, erhöht sich die entsprechende Vorzeichenzahl N um 2. Zum Beispiel:</p>
+                <ul>
+                    <li>C (N = 0) → D (N = 2): ein Ganzton; N steigt um 2</li>
+                    <li>D (N = 2) → E (N = 4): ein Ganzton; N steigt um 2</li>
+                    <li>E (N = 4) → F♯ (N = 6): ein Ganzton; N steigt um 2</li>
+                </ul>
+
+                <h3>3.2 Der Halbton-Wechsel (Gruppenübergang)</h3>
+                <p>Wenn die Sequenz von der geraden zur ungeraden Gruppe wechselt (beispielsweise von 6 auf 1 – also von F♯ nach G), zeigt die Tastatur präzise ein <span class="sequence-highlight">Halbtonintervall</span>, das einen „Gruppenübergang“ im geometrischen Pfad markiert. Dieser Wechsel ist keine einfache inkrementelle Zunahme der Akzidentien, sondern eine strukturelle Verschiebung:</p>
+                <ul>
+                    <li>F♯ (N = 6) → G (N = 1): ein Halbton; N wechselt von der geraden in die ungerade Gruppe</li>
+                </ul>
+                <p>Danach folgt die ungerade Gruppe intern wieder der +2-Regel.</p>
+
+                <h3>3.3 Pädagogische Anwendung</h3>
+                <p>Anstatt sich auf traditionelle Eselsbrücken des Quintenzirkels zu verlassen, müssen Lernende nur einem visuellen Pfad auf der Tastatur folgen: „Addiere 2 zu N bei jedem Ganztonschritt; wechsle die Gruppe beim Halbton.“ Auf diese Weise können sie systematisch die Vorzeichenanzahl für alle Kreuz-Dur-Tonarten herleiten. Dieser Ansatz übersetzt das abstrakte Konzept der Tonartvorzeichnung in eine konkrete, sichtbare – und sogar taktile – Bewegung im Tastaturraum.</p>
+
+                <h2>IV. Ein einheitlicher Rahmen für Dur und Moll</h2>
+                <p>Die vorangegangenen Regelmäßigkeiten weisen eine modusinvariante Allgemeingültigkeit auf: Sie gelten nicht nur für Dur-Tonarten, sondern gleichermaßen für ihre parallelen Moll-Tonarten. Wichtiger noch: Sowohl das Dur- als auch das Moll-System besitzen einen räumlichen Referenzpunkt, der als „Nullpunkt“ dienen kann, wodurch beide in einem einzigen linear-geometrischen Rahmen beschrieben werden können.</p>
+
+                <h3>4.1 Referenzpunkt für Dur-Tonarten</h3>
+                <p>Ausgehend von <b>C (N = 0)</b>:</p>
+                <ul>
+                    <li>Eine Zunahme der Kreuze entspricht einer Bewegung nach <b>rechts</b> auf der Tastatur.</li>
+                    <li>Eine Zunahme der Bs entspricht einer Bewegung nach <b>links</b> auf der Tastatur.</li>
+                </ul>
+
+                <h3>4.2 Referenzpunkt für Moll-Tonarten</h3>
+                <p>Ausgehend von <b>A (N = 0)</b> gilt dieselbe Richtungsregularität:</p>
+                <ul>
+                    <li>Kreuze nehmen nach <b>rechts</b> auf der Tastatur zu.</li>
+                    <li>Bs nehmen nach <b>links</b> auf der Tastatur zu.</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 Ein gemeinsames Richtungsprinzip</h3>
+                <p>Dur- und Moll-Tonarten nehmen den Ausgangspunkt ihrer jeweiligen diatonischen Skalen – C und A – als „Vorzeichen-Nullpunkt“ und teilen dieselbe Richtungsregel: <span class="sequence-highlight">Nach rechts = mehr Kreuze; Nach links = mehr Bs</span>. Diese Richtungskonsistenz bedeutet, dass die Sequenz 0–2–4–6–1–3–5–7 nicht nur das Kreuz-System beschreiben kann, sondern – durch Spiegelung – auch natürlich auf das B-System abbildbar ist, wodurch ein einheitliches linear-geometrisches Modell entsteht, das Dur/Moll und Kreuze/Bs umfasst.</p>
+
+                <h2>V. Schlussfolgerung</h2>
+                <p>Diese Studie formuliert das Wissen über Tonartvorzeichnungen – traditionell als Gedächtnislast betrachtet – in eine lineare geometrische Struktur um, die direkt auf der Tastatur beobachtet werden kann. Für Pianisten und für Schüler, die visuelle Lernmodi bevorzugen, bietet dieser Ansatz einen neuen Weg, der das konventionelle Kreisdiagramm umgeht und es den Lernenden ermöglicht, Tonalität und Anzahl der Akzidentien direkt von den räumlichen Positionen auf den Tasten abzulesen.[5] Darüber hinaus deutet die durch die Sequenz 0–2–4–6–1–3–5–7 enthüllte geometrische Ordnung darauf hin, dass das Vorzeichensystem keine willkürliche Konvention ist, sondern tief in einer intrinsischen mathematischen Beziehung zwischen der Tastatur und der diatonischen Sammlung verwurzelt ist.</p>
+            `
+        },
+
+        "fr": {
+            ui: {
+                title: "La géométrie linéaire des armures",
+                subtitle: "Une analyse théorique de la séquence linéaire 0–2–4–6–1–3–5–7",
+                demoLabel: "Démonstration interactive",
+                instruction: "Survolez les touches : Tonique & Nombre d'altérations",
+                btnMajor: "Majeur",
+                btnMinor: "Mineur",
+                btnMajorSharps: "Majeur (Dièse)",
+                btnMinorSharps: "Mineur (Dièse)",
+                btnMajorFlats: "Majeur (Bémol)",
+                btnMinorFlats: "Mineur (Bémol)",
+                termMajor: "Majeur",
+                termMinor: "Mineur",
+                termSharps: "Dièse(s)",
+                termFlats: "Bémol(s)",
+                termNatural: "Naturel (Bécarre)",
+                termWholeStep: "T",
+                termHalfStep: "D",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>Résumé :</b> Cette étude révèle une régularité géométrique sous-jacente au système des armures tel qu'il se réalise sur le clavier du piano. En cartographiant le nombre de dièses des tonalités majeures sur des positions spatiales du clavier, l'étude identifie une distribution hautement systématique des toniques qui forme la séquence linéaire 0–2–4–6–1–3–5–7. Celle-ci correspond strictement au schéma intervallique « ton–ton–ton–demi-ton–ton–ton–ton ». Cette séquence suit une règle de « sauts d'un ton entier par +2, avec des décalages d'un demi-ton marquant les transitions de groupe », et les tonalités majeures et mineures partagent la même régularité directionnelle (droite = dièses, gauche = bémols). Contrairement à l'approche traditionnelle de mémorisation du cycle des quintes, cette méthode permet aux apprenants de déduire le nombre d'altérations directement à partir des positions spatiales sur le clavier, offrant ainsi un nouveau cadre géométrique pour la visualisation dans l'enseignement de la théorie musicale.
+                </div>
+
+                <h2>I. Introduction</h2>
+                <p>Dans la musique tonale occidentale, l'armure (Key Signature) est souvent traitée comme une connaissance qui ne peut être maîtrisée que par un apprentissage par cœur. Traditionnellement, le cycle des quintes a été considéré comme l'outil visuel le plus important pour comprendre les relations entre les armures, utilisé pour représenter les relations intervalliques entre les douze tonalités majeures et mineures ainsi que le modèle régulier de changement du nombre d'altérations.[1] Cependant, la recherche suggère que lorsque les étudiants apprennent le cycle des quintes, ils se concentrent souvent sur la mémorisation du diagramme circulaire lui-même plutôt que sur une véritable compréhension de la structure intervallique et de la logique qui le sous-tendent.[2]</p>
+                <p>Parallèlement, la pratique éducative indique que les supports visuels sont particulièrement efficaces pour aider les élèves à identifier et à retenir les armures,[3] et les affordances visuelles et tactiles du clavier de piano peuvent concrétiser davantage des concepts musicaux autrement abstraits.[4] Lorsque nous projetons le nombre d'altérations d'une armure directement sur la structure spatiale du clavier, un ordre géométrique — qui n'a pas été systématiquement examiné jusqu'à présent — devient évident.</p>
+
+                <h2>II. Découverte centrale : La séquence 0–2–4–6–1–3–5–7</h2>
+                <p>En examinant la distribution des toniques majeures associées aux tonalités à dièses sur le clavier, nous constatons que bien que le nombre d'altérations change de manière numériquement discontinue, son arrangement spatio-géométrique est hautement régulier. En prenant <b>do majeur (N = 0)</b> comme point de départ, nous pouvons aligner les toniques majeures avec le nombre d'altérations selon les deux séquences suivantes :</p>
+                <ul>
+                    <li><b>Groupe pair (Even Group) :</b> 0 (Do) → 2 (Ré) → 4 (Mi) → 6 (Fa♯)</li>
+                    <li><b>Groupe impair (Odd Group) :</b> 1 (Sol) → 3 (La) → 5 (Si) → 7 (Do♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>III. Structure spatiale et le principe du ton entier</h2>
+                <p>La séquence 0–2–4–6–1–3–5–7 n'est pas un ordonnancement arbitraire ; elle correspond strictement aux distances intervalliques entre les toniques pertinentes sur le clavier. Plus frappant encore, sa structure intervallique se conforme exactement au modèle suivant :</p>
+
+                <div class="formula-block">
+                    T — T — T — D — T — T — T<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(Ton — Ton — Ton — Demi-ton — Ton — Ton — Ton)</span>
+                </div>
+
+                <h3>3.1 La règle du saut de ton entier (la « Règle +2 »)</h3>
+                <p>Sur le clavier, chaque fois que la tonique avance d'un <span class="sequence-highlight">ton entier</span> dans le cadre diatonique, le nombre d'altérations correspondant N augmente de 2. Par exemple :</p>
+                <ul>
+                    <li>Do (N = 0) → Ré (N = 2) : un ton ; N augmente de 2</li>
+                    <li>Ré (N = 2) → Mi (N = 4) : un ton ; N augmente de 2</li>
+                    <li>Mi (N = 4) → Fa♯ (N = 6) : un ton ; N augmente de 2</li>
+                </ul>
+
+                <h3>3.2 Le décalage de demi-ton (Transition de groupe)</h3>
+                <p>Lorsque la séquence passe du groupe pair au groupe impair (par exemple, de 6 à 1 — c'est-à-dire de Fa♯ à Sol), le clavier présente précisément un intervalle de <span class="sequence-highlight">demi-ton</span>, marquant une « transition de groupe » dans le parcours géométrique. Ce changement n'est pas une simple augmentation incrémentielle du nombre d'altérations ; c'est un déplacement structurel :</p>
+                <ul>
+                    <li>Fa♯ (N = 6) → Sol (N = 1) : un demi-ton ; N passe du groupe pair au groupe impair</li>
+                </ul>
+                <p>Par la suite, le groupe impair suit à nouveau la règle du +2 en interne.</p>
+
+                <h3>3.3 Application pédagogique</h3>
+                <p>Plutôt que de s'appuyer sur les moyens mnémotechniques traditionnels du cycle des quintes, les apprenants n'ont qu'à suivre un chemin visuel sur le clavier : « ajouter 2 à N à chaque avancée d'un ton ; changer de groupe au demi-ton. » Ce faisant, ils peuvent déduire systématiquement les nombres d'armures pour toutes les tonalités majeures à dièses. Cette approche traduit le concept abstrait d'armure en un mouvement concret, visible — et même tactile — à travers l'espace du clavier.</p>
+
+                <h2>IV. Un cadre unifié pour les modes majeur et mineur</h2>
+                <p>Les régularités précédentes présentent une généralité invariante selon le mode : elles s'appliquent non seulement aux tonalités majeures mais également à leurs relatives mineures. Plus important encore, les systèmes majeur et mineur possèdent tous deux un point de référence spatial pouvant servir de « point zéro », permettant aux deux d'être décrits au sein d'un même cadre géométrique linéaire.</p>
+
+                <h3>4.1 Point de référence pour les tonalités majeures</h3>
+                <p>En commençant par <b>Do (N = 0)</b> :</p>
+                <ul>
+                    <li>Une augmentation des dièses correspond à un mouvement vers la <b>droite</b> sur le clavier.</li>
+                    <li>Une augmentation des bémols correspond à un mouvement vers la <b>gauche</b> sur le clavier.</li>
+                </ul>
+
+                <h3>4.2 Point de référence pour les tonalités mineures</h3>
+                <p>En commençant par <b>La (N = 0)</b>, la même régularité directionnelle s'applique :</p>
+                <ul>
+                    <li>Les dièses augmentent vers la <b>droite</b> sur le clavier.</li>
+                    <li>Les bémols augmentent vers la <b>gauche</b> sur le clavier.</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 Un principe directionnel partagé</h3>
+                <p>Les tonalités majeures et mineures prennent le point de départ de leurs collections diatoniques respectives — Do et La — comme « point zéro de l'armure », et elles partagent la même règle directionnelle : <span class="sequence-highlight">Vers la droite = plus de dièses ; Vers la gauche = plus de bémols</span>. Cette cohérence directionnelle signifie que la séquence 0–2–4–6–1–3–5–7 peut décrire non seulement le système basé sur les dièses, mais aussi — par inversion en miroir — se cartographie naturellement sur le système basé sur les bémols, formant ainsi un modèle géométrique linéaire unifié englobant majeur/mineur et dièses/bémols.</p>
+
+                <h2>V. Conclusion</h2>
+                <p>Cette étude reformule la connaissance des armures — traditionnellement abordée comme un fardeau de mémorisation — en une structure géométrique linéaire observable directement sur le clavier. Pour les pianistes et pour les étudiants privilégiant les modes d'apprentissage visuels, cette approche offre une nouvelle voie contournant le diagramme circulaire conventionnel, permettant aux apprenants de lire la tonalité et le nombre d'altérations directement à partir des positions spatiales sur les touches.[5] Plus important encore, l'ordre géométrique révélé par la séquence 0–2–4–6–1–3–5–7 suggère que le système des armures n'est pas une convention arbitraire, mais est au contraire profondément ancré dans une relation mathématique intrinsèque entre le clavier et la collection diatonique.</p>
+            `
+        },
+
+        "it": {
+            ui: {
+                title: "La geometria lineare delle tonalità",
+                subtitle: "Un'analisi teorica della sequenza lineare 0–2–4–6–1–3–5–7",
+                demoLabel: "Dimostrazione interattiva",
+                instruction: "Passa sopra i tasti: Tonica & Numero di alterazioni",
+                btnMajor: "Maggiore",
+                btnMinor: "Minore",
+                btnMajorSharps: "Maggiore (Diesis)",
+                btnMinorSharps: "Minore (Diesis)",
+                btnMajorFlats: "Maggiore (Bemolle)",
+                btnMinorFlats: "Minore (Bemolle)",
+                termMajor: "Maggiore",
+                termMinor: "Minore",
+                termSharps: "Diesis",
+                termFlats: "Bemolle(i)",
+                termNatural: "Naturale (Bequadro)",
+                termWholeStep: "T",
+                termHalfStep: "S",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>Astratto:</b> Questo studio rivela una regolarità geometrica alla base del sistema delle armature di chiave così come realizzato sulla tastiera del pianoforte. Mappando il numero di diesis nelle tonalità maggiori su posizioni spaziali della tastiera, lo studio identifica una distribuzione altamente sistematica delle toniche che forma la sequenza lineare 0–2–4–6–1–3–5–7, la quale corrisponde rigorosamente al modello intervallare “tono–tono–tono–semitono–tono–tono–tono”. Questa sequenza segue una regola di “salti di tono intero di +2, con spostamenti di semitono che segnano le transizioni di gruppo”, e le tonalità maggiori e minori condividono la stessa regolarità direzionale (destra = diesis, sinistra = bemolli). A differenza del tradizionale approccio mnemonico del Circolo delle Quinte, questo metodo consente agli studenti di dedurre il numero di alterazioni direttamente dalle posizioni spaziali sulla tastiera, offrendo così un nuovo quadro geometrico per la visualizzazione nell'istruzione teorico-musicale.
+                </div>
+
+                <h2>I. Introduzione</h2>
+                <p>Nella musica tonale occidentale, l'armatura di chiave (Key Signature) è spesso trattata come una conoscenza che può essere padroneggiata solo attraverso l'apprendimento mnemonico. Tradizionalmente, il Circolo delle Quinte è stato considerato lo strumento visivo più importante per comprendere le relazioni tra le tonalità, utilizzato per rappresentare le relazioni intervallari tra le dodici tonalità maggiori e minori e il modello regolare con cui cambia il numero di alterazioni.[1] Tuttavia, la ricerca suggerisce che quando gli studenti imparano il Circolo delle Quinte, spesso si concentrano sulla memorizzazione del diagramma circolare stesso piuttosto che sulla reale comprensione della struttura intervallare e della logica che lo sottendono.[2]</p>
+                <p>Allo stesso tempo, la pratica educativa indica che gli ausili visivi sono particolarmente efficaci nell'aiutare gli studenti a identificare e ricordare le armature,[3] e le possibilità visive e tattili della tastiera del pianoforte possono concretizzare ulteriormente concetti musicali altrimenti astratti.[4] Quando mappiamo il numero di alterazioni in un'armatura direttamente sulla struttura spaziale della tastiera, diventa evidente un ordine geometrico — uno che non è stato precedentemente esaminato in modo sistematico.</p>
+
+                <h2>II. Risultato fondamentale: La sequenza 0–2–4–6–1–3–5–7</h2>
+                <p>Esaminando la distribuzione delle toniche maggiori associate alle tonalità con diesis sulla tastiera, scopriamo che sebbene il numero di alterazioni cambi in modo numericamente discontinuo, la sua disposizione spaziale-geometrica è altamente regolare. Prendendo il <b>Do maggiore (N = 0)</b> come punto di partenza, possiamo allineare le toniche maggiori con il numero di alterazioni secondo le seguenti due sequenze:</p>
+                <ul>
+                    <li><b>Gruppo Pari (Even Group):</b> 0 (Do) → 2 (Re) → 4 (Mi) → 6 (Fa♯)</li>
+                    <li><b>Gruppo Dispari (Odd Group):</b> 1 (Sol) → 3 (La) → 5 (Si) → 7 (Do♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>III. Struttura spaziale e principio del tono intero</h2>
+                <p>La sequenza 0–2–4–6–1–3–5–7 non è un ordinamento arbitrario; corrisponde piuttosto rigorosamente alle distanze intervallari tra le toniche rilevanti sulla tastiera. Ancora più sorprendentemente, la sua struttura intervallare si conforma esattamente al seguente modello:</p>
+
+                <div class="formula-block">
+                    T — T — T — S — T — T — T<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(Tono — Tono — Tono — Semitono — Tono — Tono — Tono)</span>
+                </div>
+
+                <h3>3.1 La regola del salto di tono (la “Regola del +2”)</h3>
+                <p>Sulla tastiera, ogni volta che la tonica avanza di un <span class="sequence-highlight">tono intero</span> all'interno del quadro diatonico, il numero di alterazioni corrispondente N aumenta di 2. Ad esempio:</p>
+                <ul>
+                    <li>Do (N = 0) → Re (N = 2): un tono; N aumenta di 2</li>
+                    <li>Re (N = 2) → Mi (N = 4): un tono; N aumenta di 2</li>
+                    <li>Mi (N = 4) → Fa♯ (N = 6): un tono; N aumenta di 2</li>
+                </ul>
+
+                <h3>3.2 Lo spostamento di semitono (Transizione di gruppo)</h3>
+                <p>Quando la sequenza passa dal gruppo pari al gruppo dispari (per esempio, da 6 a 1 — cioè, da Fa♯ a Sol), la tastiera presenta precisamente un intervallo di <span class="sequence-highlight">semitono</span>, segnando una “transizione di gruppo” nel percorso geometrico. Questo cambiamento non è un semplice aumento incrementale del numero di alterazioni; è uno spostamento strutturale:</p>
+                <ul>
+                    <li>Fa♯ (N = 6) → Sol (N = 1): un semitono; N passa dal gruppo pari al gruppo dispari</li>
+                </ul>
+                <p>Successivamente, il gruppo dispari segue nuovamente la regola del +2 internamente.</p>
+
+                <h3>3.3 Applicazione pedagogica</h3>
+                <p>Piuttosto che affidarsi alle mnemotecniche tradizionali del Circolo delle Quinte, gli studenti devono solo seguire un percorso visivo sulla tastiera: “aggiungi 2 a N a ogni avanzamento di tono intero; cambia gruppo al semitono”. In tal modo, possono derivare sistematicamente i numeri di armatura per tutte le tonalità maggiori con diesis. Questo approccio traduce il concetto astratto di armatura di chiave in un movimento concreto, visibile — e persino tattile — attraverso lo spazio della tastiera.</p>
+
+                <h2>IV. Un quadro unificato per le tonalità maggiori e minori</h2>
+                <p>Le regolarità precedenti mostrano una generalità invariante rispetto al modo: si applicano non solo alle tonalità maggiori ma ugualmente alle loro relative minori. Ancora più importante, entrambi i sistemi maggiore e minore possiedono un punto di riferimento spaziale che può fungere da “punto zero”, permettendo ai due di essere descritti all'interno di un unico quadro geometrico-lineare.</p>
+
+                <h3>4.1 Punto di riferimento per le tonalità maggiori</h3>
+                <p>Partendo dal <b>Do (N = 0)</b>:</p>
+                <ul>
+                    <li>Un aumento dei diesis corrisponde a un movimento verso <b>destra</b> sulla tastiera.</li>
+                    <li>Un aumento dei bemolli corrisponde a un movimento verso <b>sinistra</b> sulla tastiera.</li>
+                </ul>
+
+                <h3>4.2 Punto di riferimento per le tonalità minori</h3>
+                <p>Partendo dal <b>La (N = 0)</b>, vale la stessa regolarità direzionale:</p>
+                <ul>
+                    <li>I diesis aumentano verso <b>destra</b> sulla tastiera.</li>
+                    <li>I bemolli aumentano verso <b>sinistra</b> sulla tastiera.</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 Un principio direzionale condiviso</h3>
+                <p>Le tonalità maggiori e minori prendono il punto di partenza delle loro rispettive collezioni diatoniche — Do e La — come “punto zero dell'armatura”, e condividono la stessa regola direzionale: <span class="sequence-highlight">Verso destra = più diesis; Verso sinistra = più bemolli</span>. Questa coerenza direzionale significa che la sequenza 0–2–4–6–1–3–5–7 può descrivere non solo il sistema basato sui diesis, ma anche — tramite inversione speculare — si mappa naturalmente sul sistema basato sui bemolli, formando così un modello geometrico-lineare unificato che abbraccia maggiore/minore e diesis/bemolli.</p>
+
+                <h2>V. Conclusione</h2>
+                <p>Questo studio riformula la conoscenza delle armature di chiave — tradizionalmente affrontata come un onere di memorizzazione — in una struttura geometrica lineare che può essere osservata direttamente sulla tastiera. Per i pianisti e per gli studenti che prediligono modalità di apprendimento visivo, questo approccio offre un nuovo percorso che aggira il diagramma circolare convenzionale, consentendo agli studenti di leggere la tonalità e il numero di alterazioni direttamente dalle posizioni spaziali sui tasti.[5] Ancora più importante, l'ordine geometrico rivelato dalla sequenza 0–2–4–6–1–3–5–7 suggerisce che il sistema delle armature non è una convenzione arbitraria, ma è invece profondamente fondato in una relazione matematica intrinseca tra la tastiera e la collezione diatonica.</p>
+            `
+        },
+
+        "ru": {
+            ui: {
+                title: "Линейная геометрия тональностей",
+                subtitle: "Теоретический анализ линейной последовательности 0–2–4–6–1–3–5–7",
+                demoLabel: "Интерактивная демонстрация",
+                instruction: "Наведите курсор на клавиши: Тоника и количество знаков",
+                btnMajor: "Мажор",
+                btnMinor: "Минор",
+                btnMajorSharps: "Мажор (диезы)",
+                btnMinorSharps: "Минор (диезы)",
+                btnMajorFlats: "Мажор (бемоли)",
+                btnMinorFlats: "Минор (бемоли)",
+                termMajor: "Мажор",
+                termMinor: "Минор",
+                termSharps: "Диез(ы)",
+                termFlats: "Бемоль(и)",
+                termNatural: "Без знаков",
+                termWholeStep: "Ц",
+                termHalfStep: "П",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>Аннотация:</b> Данное исследование раскрывает геометрическую закономерность, лежащую в основе системы ключевых знаков, реализованной на фортепианной клавиатуре. Путём отображения количества диезов в мажорных тональностях на пространственные позиции клавиатуры, исследование выявляет высокосистематичное распределение тоник, образующее линейную последовательность 0–2–4–6–1–3–5–7. Эта последовательность строго соответствует интервальной схеме «целый тон–целый тон–целый тон–полутон–целый тон–целый тон–целый тон». Она подчиняется правилу «скачков на целый тон (+2), со сдвигами на полутон, обозначающими групповые переходы», причём мажорные и минорные тональности разделяют одну и ту же направленную регулярность (вправо = диезы, влево = бемоли). В отличие от традиционного подхода к запоминанию квинтового круга, этот метод позволяет обучающимся выводить количество знаков альтерации непосредственно из пространственных позиций на клавиатуре, предлагая тем самым новую геометрическую структуру для визуализации в музыкально-теоретическом обучении.
+                </div>
+
+                <h2>I. Введение</h2>
+                <p>В западной тональной музыке ключевые знаки (Key Signature) часто рассматриваются как знания, которые можно освоить только путём механического запоминания. Традиционно квинтовый круг считался важнейшим визуальным инструментом для понимания тональных отношений, используемым для представления интервальных связей между двенадцатью мажорными и минорными тональностями и закономерности изменения количества знаков альтерации.[1] Однако исследования показывают, что при изучении квинтового круга студенты часто сосредотачиваются на запоминании самой круговой диаграммы, а не на подлинном понимании интервальной структуры и логики, лежащих в её основе.[2]</p>
+                <p>В то же время педагогическая практика свидетельствует о том, что визуальные средства особенно эффективны в помощи студентам при идентификации и запоминании ключевых знаков,[3] а визуальные и тактильные возможности фортепианной клавиатуры могут дополнительно конкретизировать иначе абстрактные музыкальные концепции.[4] Когда мы отображаем количество знаков альтерации в тональности непосредственно на пространственную структуру клавиатуры, становится очевидным геометрический порядок — тот, который ранее систематически не исследовался.</p>
+
+                <h2>II. Основной результат: Последовательность 0–2–4–6–1–3–5–7</h2>
+                <p>Изучая распределение тоник диезных мажорных тональностей на клавиатуре, мы обнаруживаем, что, хотя количество знаков изменяется численно дискретно, его пространственно-геометрическое расположение в высшей степени регулярно. Принимая <b>До мажор (N = 0)</b> за отправную точку, мы можем сопоставить мажорные тоники с количеством знаков в виде следующих двух последовательностей:</p>
+                <ul>
+                    <li><b>Чётная группа (Even Group):</b> 0 (C) → 2 (D) → 4 (E) → 6 (F♯)</li>
+                    <li><b>Нечётная группа (Odd Group):</b> 1 (G) → 3 (A) → 5 (B) → 7 (C♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>III. Пространственная структура и принцип целого тона</h2>
+                <p>Последовательность 0–2–4–6–1–3–5–7 не является произвольным упорядочиванием; скорее, она строго соответствует интервальным расстояниям между соответствующими тониками на клавиатуре. Ещё более поразительно то, что её интервальная структура точно соответствует следующей схеме:</p>
+
+                <div class="formula-block">
+                    Т — Т — Т — П — Т — Т — Т<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(Целый тон — Целый тон — Целый тон — Полутон — Целый тон — Целый тон — Целый тон)</span>
+                </div>
+
+                <h3>3.1 Правило скачка на целый тон («Правило +2»)</h3>
+                <p>На клавиатуре каждый раз, когда тоника продвигается на один <span class="sequence-highlight">целый тон</span> в рамках диатонической системы, соответствующее количество ключевых знаков N увеличивается на 2. Например:</p>
+                <ul>
+                    <li>C (N = 0) → D (N = 2): целый тон; N увеличивается на 2</li>
+                    <li>D (N = 2) → E (N = 4): целый тон; N увеличивается на 2</li>
+                    <li>E (N = 4) → F♯ (N = 6): целый тон; N увеличивается на 2</li>
+                </ul>
+
+                <h3>3.2 Сдвиг на полутон (Групповой переход)</h3>
+                <p>Когда последовательность переходит от чётной группы к нечётной (например, от 6 к 1 — то есть от F♯ к G), клавиатура представляет собой именно интервал <span class="sequence-highlight">полутона</span>, обозначающий «групповой переход» в геометрическом пути. Это изменение не является простым инкрементным увеличением количества знаков; это структурный сдвиг:</p>
+                <ul>
+                    <li>F♯ (N = 6) → G (N = 1): полутон; N переходит из чётной группы в нечётную</li>
+                </ul>
+                <p>После этого нечётная группа снова внутренне следует правилу +2.</p>
+
+                <h3>3.3 Педагогическое применение</h3>
+                <p>Вместо того чтобы полагаться на традиционные мнемонические приёмы квинтового круга, обучающимся нужно лишь следовать визуальному пути на клавиатуре: «прибавляйте 2 к N при каждом продвижении на целый тон; меняйте группу на полутоне». Тем самым они могут систематически выводить количество знаков для всех диезных мажорных тональностей. Этот подход переводит абстрактное понятие ключевых знаков в конкретное, видимое — и даже осязаемое — движение в пространстве клавиатуры.</p>
+
+                <h2>IV. Единая структура для мажора и минора</h2>
+                <p>Вышеуказанные закономерности демонстрируют инвариантную по отношению к ладу всеобщность: они применимы не только к мажорным тональностям, но и в равной степени к их параллельным минорам. Более того, и мажорная, и минорная системы обладают пространственной точкой отсчёта, которая может служить «нулевой точкой», позволяя описывать обе системы в рамках единой линейно-геометрической структуры.</p>
+
+                <h3>4.1 Точка отсчёта для мажорных тональностей</h3>
+                <p>Начиная с <b>C (N = 0)</b>:</p>
+                <ul>
+                    <li>Увеличение диезов соответствует движению <b>вправо</b> по клавиатуре.</li>
+                    <li>Увеличение бемолей соответствует движению <b>влево</b> по клавиатуре.</li>
+                </ul>
+
+                <h3>4.2 Точка отсчёта для минорных тональностей</h3>
+                <p>Начиная с <b>A (N = 0)</b>, действует та же направленная закономерность:</p>
+                <ul>
+                    <li>Диезы увеличиваются <b>вправо</b> по клавиатуре.</li>
+                    <li>Бемоли увеличиваются <b>влево</b> по клавиатуре.</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 Общий принцип направленности</h3>
+                <p>Мажорные и минорные тональности принимают начальную точку своих соответствующих диатонических звукорядов — C и A — в качестве «нулевой точки ключевых знаков» и разделяют одно и то же правило направления: <span class="sequence-highlight">Вправо = больше диезов; Влево = больше бемолей</span>. Эта направленная последовательность означает, что последовательность 0–2–4–6–1–3–5–7 может описывать не только систему, основанную на диезах, но и — через зеркальную инверсию — естественным образом отображается на систему, основанную на бемолях, формируя тем самым единую линейно-геометрическую модель, охватывающую мажор/минор и диезы/бемоли.</p>
+
+                <h2>V. Заключение</h2>
+                <p>Данное исследование переформулирует знания о ключевых знаках — традиционно рассматриваемые как бремя запоминания — в линейную геометрическую структуру, которую можно наблюдать непосредственно на клавиатуре. Для пианистов и студентов, предпочитающих визуальные способы обучения, этот подход предлагает новый путь, который обходит традиционную круговую диаграмму, позволяя обучающимся считывать тональность и количество знаков альтерации непосредственно из пространственных позиций на клавишах.[5] Более того, геометрический порядок, выявленный последовательностью 0–2–4–6–1–3–5–7, предполагает, что система ключевых знаков не является произвольной условностью, а вместо этого глубоко укоренена во внутренней математической взаимосвязи между клавиатурой и диатоническим звукорядом.</p>
+            `
+        },
+
+        "ja": {
+            ui: {
+                title: "調号の線形幾何学",
+                subtitle: "線形数列 0–2–4–6–1–3–5–7 の理論的分析",
+                demoLabel: "インタラクティブ・デモンストレーション",
+                instruction: "キーにカーソルを合わせてください：主音と変化記号の数",
+                btnMajor: "長調",
+                btnMinor: "短調",
+                btnMajorSharps: "長調（シャープ）",
+                btnMinorSharps: "短調（シャープ）",
+                btnMajorFlats: "長調（フラット）",
+                btnMinorFlats: "短調（フラット）",
+                termMajor: "長調",
+                termMinor: "短調",
+                termSharps: "個のシャープ",
+                termFlats: "個のフラット",
+                termNatural: "変化記号なし",
+                termWholeStep: "全",
+                termHalfStep: "半",
+            },
+            article: `
+                <div class="abstract-box">
+                    <b>要約：</b> 本研究は、ピアノ鍵盤上で具現化される調号システムの根底にある幾何学的規則性を明らかにする。長調のシャープの数を鍵盤の空間的位置にマッピングすることで、主音の分布が高度に体系的な 0–2–4–6–1–3–5–7 という線形数列を形成することを特定した。この数列は「全音–全音–全音–半音–全音–全音–全音」という音程パターンに厳密に対応している。この数列は「全音跳躍による+2、半音シフトによるグループ移行」という規則に従い、長調と短調は同一の方向性規則（右＝シャープ、左＝フラット）を共有している。伝統的な五度圏の暗記法とは対照的に、本手法は学習者が鍵盤上の空間的位置から直接、変化記号の数を推論することを可能にし、それによって音楽理論教育における視覚化のための新たな幾何学的枠組みを提供する。
+                </div>
+
+                <h2>一、 序論</h2>
+                <p>西洋の調性音楽において、調号（Key Signature）はしばしば機械的な暗記によってのみ習得できる知識として扱われる。伝統的に、五度圏（Circle of Fifths）は調号関係を理解するための最も重要な視覚的ツールと見なされ、12の長調・短調間の音程関係および変化記号の数が変化する規則的なパターンを表すために使用されてきた。[1] しかし、研究によれば、学生が五度圏を学ぶ際、その根底にある音程構造や論理を真に理解するのではなく、円形の図そのものを記憶することに集中してしまうことが多いことが示唆されている。[2]</p>
+                <p>同時に、教育実践において視覚的補助は学生が調号を識別し記憶するのを助けるのに特に効果的であり、[3] ピアノ鍵盤の視覚的および触覚的なアフォーダンスは、抽象的な音楽概念をさらに具体化することができる。[4] 調号における変化記号の数を鍵盤の空間構造に直接マッピング（写像）すると、これまで体系的に検討されてこなかった幾何学的秩序が明らかになる。</p>
+
+                <h2>二、 中心的発見：0–2–4–6–1–3–5–7 数列</h2>
+                <p>鍵盤上のシャープ系長調主音の分布を調べると、変化記号の数は数値的には不連続に変化するものの、その空間幾何学的配置は高度に規則的であることがわかる。<b>ハ長調（C Major, N = 0）</b>を出発点として、長調の主音と変化記号の数を以下の2つの数列として整列させることができる。</p>
+                <ul>
+                    <li><b>偶数グループ（Even Group）：</b> 0 (C) → 2 (D) → 4 (E) → 6 (F♯)</li>
+                    <li><b>奇数グループ（Odd Group）：</b> 1 (G) → 3 (A) → 5 (B) → 7 (C♯)</li>
+                </ul>
+
+                <div id="figure1"></div>
+
+                <h2>三、 空間構造と全音原理</h2>
+                <p>0–2–4–6–1–3–5–7 という数列は恣意的な順序付けではなく、鍵盤上の関連する主音間の音程距離に厳密に対応している。さらに驚くべきことに、その音程構造は以下のパターンと完全に一致している。</p>
+
+                <div class="formula-block">
+                    全 — 全 — 全 — 半 — 全 — 全 — 全<br>
+                    <span style="font-size:0.8em; color:#bdc3c7">(全音 — 全音 — 全音 — 半音 — 全音 — 全音 — 全音)</span>
+                </div>
+
+                <h3>3.1 全音跳躍規則（「+2ルール」）</h3>
+                <p>鍵盤上において、主音が全音階（Diatonic collection）の枠組み内で<span class="sequence-highlight">全音</span>だけ進むたびに、対応する調号数 N は2増加する。例えば：</p>
+                <ul>
+                    <li>C (N = 0) → D (N = 2)：全音；N は 2 増加</li>
+                    <li>D (N = 2) → E (N = 4)：全音；N は 2 増加</li>
+                    <li>E (N = 4) → F♯ (N = 6)：全音；N は 2 増加</li>
+                </ul>
+
+                <h3>3.2 半音シフト（グループ移行）</h3>
+                <p>数列が偶数グループから奇数グループへ移動する際（例えば 6 から 1 へ、すなわち F♯ から G へ）、鍵盤は正確に<span class="sequence-highlight">半音</span>音程を示し、幾何学的経路における「グループ移行」を画定する。この変化は変化記号数の単純な増分ではなく、構造的なシフトである。</p>
+                <ul>
+                    <li>F♯ (N = 6) → G (N = 1)：半音；N は偶数グループから奇数グループへ移動</li>
+                </ul>
+                <p>その後、奇数グループは内部的に再び +2 ルールに従う。</p>
+
+                <h3>3.3 教育的応用</h3>
+                <p>伝統的な五度圏の語呂合わせに頼るのではなく、学習者は鍵盤上の視覚的経路に従うだけでよい。「全音進むごとに N に 2 を加え、半音でグループを切り替える」。そうすることで、すべてのシャープ系長調の調号数を体系的に導き出すことができる。このアプローチは、調号という抽象的な概念を、鍵盤空間を通じた具体的で目に見える、さらには触知可能な動きへと翻訳する。</p>
+
+                <h2>四、 長調と短調の統一的枠組み</h2>
+                <p>前述の規則性は旋法不変（mode-invariant）の一般性を示している。それらは長調だけでなく、その平行短調にも同様に適用される。さらに重要なことに、長調と短調の両システムは、「ゼロ点」として機能する空間的基準点を持っており、両者を単一の線形幾何学的枠組みの中で記述することを可能にする。</p>
+
+                <h3>4.1 長調の基準点</h3>
+                <p><b>C (N = 0)</b> から開始する場合：</p>
+                <ul>
+                    <li>シャープの増加は、鍵盤上の<b>右</b>への動きに対応する。</li>
+                    <li>フラットの増加は、鍵盤上の<b>左</b>への動きに対応する。</li>
+                </ul>
+
+                <h3>4.2 短調の基準点</h3>
+                <p><b>A (N = 0)</b> から開始する場合も、同様の方向規則性が成立する：</p>
+                <ul>
+                    <li>シャープは鍵盤上の<b>右</b>へ増加する。</li>
+                    <li>フラットは鍵盤上の<b>左</b>へ増加する。</li>
+                </ul>
+
+                <div id="figure2"></div>
+
+                <h3>4.3 共有される方向原理</h3>
+                <p>長調と短調は、それぞれの全音階の開始点である C と A を「調号ゼロ点」とし、同一の方向規則を共有している。<span class="sequence-highlight">右方向＝シャープ増加、左方向＝フラット増加</span>である。この方向的一貫性は、0–2–4–6–1–3–5–7 数列がシャープに基づくシステムを記述できるだけでなく、鏡像反転を通じてフラットに基づくシステムにも自然にマッピングされ、それによって長調/短調およびシャープ/フラットを網羅する統一的な線形幾何学モデルを形成することを意味する。</p>
+
+                <h2>五、 結論</h2>
+                <p>本研究は、従来は記憶の負担としてアプローチされてきた調号の知識を、鍵盤上で直接観察可能な線形幾何学構造へと再構築するものである。ピアニストや視覚的学習モードを好む学生にとって、このアプローチは従来の円形図式を回避する新たな経路を提供し、学習者が鍵盤上の空間的位置から直接調性と変化記号の数を読み取ることを可能にする。[5] さらに重要なことに、0–2–4–6–1–3–5–7 数列によって明らかにされた幾何学的秩序は、調号システムが恣意的な慣習ではなく、鍵盤と全音階の間に存在する内在的な数学的関係に深く根ざしていることを示唆している。</p>
+            `
+        }
+    };
+
+    // --- 2. Interactive Piano Modes ---
+    const modeDefs = {
+      majorSharps: {
+        modeType: 'major',
+        accidental: 'sharp',
+        rangeStart: 'C4',
+        rangeEnd: 'B5',
+        sequence: ["C4","D4","E4","F#4","G4","A4","B4","C#5"],
+        map: { "C4": 0, "D4": 2, "E4": 4, "F#4": 6, "G4": 1, "A4": 3, "B4": 5, "C#5": 7 }
+      },
+      minorSharps: {
+        modeType: 'minor',
+        accidental: 'sharp',
+        rangeStart: 'C4',
+        rangeEnd: 'B5',
+        sequence: ["A4","B4","C#5","D#5","E5","F#5","G#5","A#5"],
+        map: { "A4": 0, "B4": 2, "C#5": 4, "D#5": 6, "E5": 1, "F#5": 3, "G#5": 5, "A#5": 7 }
+      },
+      majorFlats: {
+        modeType: 'major',
+        accidental: 'flat',
+        rangeStart: 'F3',
+        rangeEnd: 'E5',
+        sequence: ["Cb4","Db4","Eb4","F4","Gb4","Ab4","Bb4","C5"],
+        map: { "Cb4": 7, "Db4": 5, "Eb4": 3, "F4": 1, "Gb4": 6, "Ab4": 4, "Bb4": 2, "C5": 0 }
+      },
+      minorFlats: {
+        modeType: 'minor',
+        accidental: 'flat',
+        rangeStart: 'F4',
+        rangeEnd: 'E6',
+        sequence: ["Ab4","Bb4","C5","D5","Eb5","F5","G5","A5"],
+        map: { "Ab4": 7, "Bb4": 5, "C5": 3, "D5": 1, "Eb5": 6, "F5": 4, "G5": 2, "A5": 0 }
+      }
+    };
+
+    let currentLang = 'en';
+    let currentModeKey = 'majorSharps';
+
+    function init() {
+        // Detect Language
+        const browserLang = navigator.language || navigator.userLanguage;
+        const langCode = browserLang.slice(0, 2).toLowerCase();
+        const fullCode = browserLang; // e.g. zh-TW
+
+        if (contentDB[fullCode]) {
+            currentLang = fullCode; // Exact match (e.g. zh-TW)
+        } else if (contentDB[langCode]) {
+            currentLang = langCode; // Prefix match (e.g. en-US -> en)
+        } else if (langCode === 'zh') {
+            currentLang = 'zh-TW'; // Fallback for general zh
+        } else {
+            currentLang = 'en';
+        }
+
+        const select = document.getElementById('langSelect');
+        if (select && select.querySelector(`option[value="${currentLang}"]`)) {
+            select.value = currentLang;
+        }
+
+        if (!modeDefs[currentModeKey]) currentModeKey = 'majorSharps';
+        renderAll();
+    }
+
+    function changeLanguage(val) {
+        currentLang = val;
+        renderAll();
+    }
+
+    function setMode(modeKey) {
+        if (!modeDefs[modeKey]) return;
+        currentModeKey = modeKey;
+        renderPiano();
+        updateActiveButtonsAndPianoClass();
+        resetInfoText();
+    }
+
+    function renderAll() {
+        const data = contentDB[currentLang] || contentDB['en'];
+        const uiData = data.ui || (contentDB['en'].ui);
+
+        // A. Render UI Text
+        document.getElementById('pageTitle').textContent = uiData.title;
+        document.getElementById('pageSubtitle').textContent = uiData.subtitle;
+        document.getElementById('demoLabel').textContent = uiData.demoLabel;
+
+        document.getElementById('btnMajorSharps').textContent = uiData.btnMajorSharps;
+        document.getElementById('btnMinorSharps').textContent = uiData.btnMinorSharps;
+        document.getElementById('btnMajorFlats').textContent = uiData.btnMajorFlats;
+        document.getElementById('btnMinorFlats').textContent = uiData.btnMinorFlats;
+
+        // B. Render Article
+        document.getElementById('articleContent').innerHTML = data.article;
+        
+        // Re-render figures inside the article
+        renderFigure1();
+        renderFigure2();
+
+        // C. Render Piano
+        setMode(currentModeKey);
+    }
+
+    function resetInfoText() {
+        const data = contentDB[currentLang] || contentDB['en'];
+        document.getElementById('interactionInfo').textContent = data.ui.instruction;
+    }
+
+    function updateActiveButtonsAndPianoClass() {
+        const def = modeDefs[currentModeKey];
+        const pianoDiv = document.getElementById('piano');
+
+        const allBtnIds = ['btnMajorSharps', 'btnMinorSharps', 'btnMajorFlats', 'btnMinorFlats'];
+        allBtnIds.forEach(id => {
+            const b = document.getElementById(id);
+            if(b) b.classList.remove('active-major', 'active-minor');
+        });
+
+        const activeBtnId = ({
+            majorSharps: 'btnMajorSharps',
+            minorSharps: 'btnMinorSharps',
+            majorFlats: 'btnMajorFlats',
+            minorFlats: 'btnMinorFlats'
+        })[currentModeKey];
+
+        const activeBtn = document.getElementById(activeBtnId);
+        if (activeBtn) {
+            if (def.modeType === 'major') activeBtn.classList.add('active-major');
+            else activeBtn.classList.add('active-minor');
+        }
+
+        pianoDiv.classList.remove('major-mode', 'minor-mode');
+        pianoDiv.classList.add(def.modeType === 'major' ? 'major-mode' : 'minor-mode');
+    }
+
+    function renderPiano() {
+      const pianoDiv = document.getElementById('piano');
+      pianoDiv.innerHTML = '';
+
+      const data = contentDB[currentLang] || contentDB['en'];
+      const uiData = data.ui;
+
+      const def = modeDefs[currentModeKey];
+      const keys = generatePianoKeys(def.rangeStart, def.rangeEnd, def.accidental);
+
+      const midiMap = buildMidiMap(def.map);
+      const midiToEl = {};
+
+      keys.forEach((keyData) => {
+        const keyEl = document.createElement('div');
+        keyEl.className = `key ${keyData.type}`;
+
+        const keyMidi = noteToMidi(keyData.note);
+        if (keyMidi !== null) midiToEl[keyMidi] = keyEl;
+
+        const hit = (keyMidi !== null) ? midiMap[keyMidi] : null;
+        const num = hit ? hit.num : null;
+        const displayNote = hit ? hit.labelNote : keyData.note;
+
+        if (num !== null) {
+          keyEl.classList.add((num % 2 === 0) ? 'tonic-even' : 'tonic-odd');
+
+          const noteSpan = document.createElement('span');
+          noteSpan.className = 'note-tag';
+          noteSpan.textContent = formatNoteForDisplay(displayNote);
+          keyEl.appendChild(noteSpan);
+
+          const span = document.createElement('span');
+          span.className = 'num-tag';
+          span.textContent = num;
+          keyEl.appendChild(span);
+
+          keyEl.onmouseenter = () => {
+            const modeTerm = def.modeType === 'major' ? uiData.termMajor : uiData.termMinor;
+            const accidentalTerm = def.accidental === 'sharp' ? uiData.termSharps : uiData.termFlats;
+            const noteNameDisplay = formatNoteForDisplay(displayNote);
+            const parityColor = (num % 2 === 0) ? 'var(--even-color)' : 'var(--odd-color)';
+
+            let resultHtml = "";
+            if (num === 0) {
+              resultHtml = `<div><b>${noteNameDisplay} ${modeTerm}</b> = <span style="color:${parityColor}; font-weight:bold;">${uiData.termNatural}</span></div>`;
+            } else {
+              resultHtml = `<div><b>${noteNameDisplay} ${modeTerm}</b> = <span style="color:${parityColor}; font-weight:bold;">${num}</span> ${accidentalTerm}</div>`;
+            }
+            resultHtml += `<div id="vexflow-container"></div>`;
+            document.getElementById('interactionInfo').innerHTML = resultHtml;
+            keyEl.style.background = keyData.type === 'white' ? '#fff7d6' : '#555';
+
+            setTimeout(() => {
+                // VexFlow logic
+                let vfKeyName = displayNote.replace(/\d+/g, '');
+                if (def.modeType === 'minor') vfKeyName += "m";
+                drawSingleKeySignature('vexflow-container', vfKeyName);
+            }, 0);
+          };
+
+          keyEl.onmouseleave = () => {
+            resetInfoText();
+            keyEl.style.background = '';
+          };
+        } else {
+          keyEl.style.opacity = '0.5';
+          keyEl.style.cursor = 'default';
+        }
+
+        pianoDiv.appendChild(keyEl);
+      });
+
+      renderIntervals(def, midiToEl, uiData);
+    }
+
+    function renderIntervals(def, midiToEl, uiData){
+      const pianoDiv = document.getElementById('piano');
+      const layer = document.createElement('div');
+      layer.className = 'interval-layer';
+      pianoDiv.appendChild(layer);
+
+      const seq = def.sequence; 
+      for (let i = 0; i < seq.length - 1; i++){
+        const m1 = noteToMidi(seq[i]);
+        const m2 = noteToMidi(seq[i+1]);
+        if (m1 === null || m2 === null) continue;
+
+        const e1 = midiToEl[m1];
+        const e2 = midiToEl[m2];
+        if (!e1 || !e2) continue;
+
+        const x1 = e1.offsetLeft + e1.offsetWidth / 2;
+        const x2 = e2.offsetLeft + e2.offsetWidth / 2;
+        const mid = (x1 + x2) / 2;
+
+        const delta = Math.abs(m2 - m1); // 1=half, 2=whole
+        const isHalf = (delta === 1);
+
+        const n1 = def.map[seq[i]];
+        const n2 = def.map[seq[i+1]];
+        let groupClass = '';
+        if (typeof n1 === 'number' && typeof n2 === 'number') {
+            if ((n1 % 2) === (n2 % 2)) groupClass = (n1 % 2 === 0) ? 'even' : 'odd';
+            else groupClass = 'transition';
+        }
+
+        const label = document.createElement('div');
+        label.className = `interval-label ${groupClass}`;
+        label.textContent = isHalf ? uiData.termHalfStep : uiData.termWholeStep;
+        label.style.left = `${mid}px`;
+        layer.appendChild(label);
+      }
+    }
+
+    // --- Figure Rendering Logic (Figures 1 & 2) ---
+
+    function renderFigure1(){
+      const host = document.getElementById('figure1');
+      if (!host) return;
+
+      const data = contentDB[currentLang] || contentDB['en'];
+      
+      // Captions map
+      const caps = {
+         en: { cap: "Figure 1: Keyboard configurations illustrating four patterns", a: "Fig.1a Major Sharps", b: "Fig.1b Minor Sharps", c: "Fig.1c Major Flats", d: "Fig.1d Minor Flats" },
+         "zh-TW": { cap: "圖 1：展示四種模式的鍵盤配置", a: "圖1a 大調升記號", b: "圖1b 小調升記號", c: "圖1c 大調降記號", d: "圖1d 小調降記號" },
+         de: { cap: "Abb. 1: Tastaturkonfigurationen der vier Muster", a: "Abb.1a Dur (Kreuz)", b: "Abb.1b Moll (Kreuz)", c: "Abb.1c Dur (B)", d: "Abb.1d Moll (B)" },
+         fr: { cap: "Fig. 1 : Configurations du clavier illustrant quatre motifs", a: "Fig.1a Majeur (Dièse)", b: "Fig.1b Mineur (Dièse)", c: "Fig.1c Majeur (Bémol)", d: "Fig.1d Mineur (Bémol)" },
+         it: { cap: "Fig. 1: Configurazioni della tastiera che illustrano quattro modelli", a: "Fig.1a Maggiore (Diesis)", b: "Fig.1b Minore (Diesis)", c: "Fig.1c Maggiore (Bemolle)", d: "Fig.1d Minore (Bemolle)" },
+         ru: { cap: "Рис. 1: Конфигурации клавиатуры", a: "Рис.1a Мажор (диезы)", b: "Рис.1b Минор (диезы)", c: "Рис.1c Мажор (бемоли)", d: "Рис.1d Минор (бемоли)" },
+         ja: { cap: "図1：4つのパターンを示す鍵盤構成", a: "図1a 長調（シャープ）", b: "図1b 短調（シャープ）", c: "図1c 長調（フラット）", d: "図1d 短調（フラット）" }
+      };
+
+      const t = caps[currentLang] || caps['en'];
+
+      host.innerHTML = `
+        <div class="fig1">
+          <div class="fig1-caption">${t.cap}</div>
+          <div class="fig1-grid">
+            <div class="fig1-card"><div class="fig1-title">${t.a}</div><div class="mini-wrapper"><div class="mini-piano" id="fig1aPiano"></div></div></div>
+            <div class="fig1-card"><div class="fig1-title">${t.b}</div><div class="mini-wrapper"><div class="mini-piano" id="fig1bPiano"></div></div></div>
+            <div class="fig1-card"><div class="fig1-title">${t.c}</div><div class="mini-wrapper"><div class="mini-piano" id="fig1cPiano"></div></div></div>
+            <div class="fig1-card"><div class="fig1-title">${t.d}</div><div class="mini-wrapper"><div class="mini-piano" id="fig1dPiano"></div></div></div>
+          </div>
+        </div>
+      `;
+
+      const uiData = data.ui;
+      renderStaticPianoWithIntervals('fig1aPiano', modeDefs.majorSharps, uiData, { rangeStart:'C4', rangeEnd:'C#5', accidental:'sharp' });
+      renderStaticPianoWithIntervals('fig1bPiano', modeDefs.minorSharps, uiData, { rangeStart:'A4', rangeEnd:'A#5', accidental:'sharp' });
+      renderStaticPianoWithIntervals('fig1cPiano', modeDefs.majorFlats,  uiData, { rangeStart:'Cb4', rangeEnd:'C5', accidental:'flat'  });
+      renderStaticPianoWithIntervals('fig1dPiano', modeDefs.minorFlats,  uiData, { rangeStart:'Ab4', rangeEnd:'A5', accidental:'flat'  });
+    }
+
+    function renderFigure2(){
+      const host = document.getElementById('figure2');
+      if (!host) return;
+
+      const data = contentDB[currentLang] || contentDB['en'];
+      
+      const caps = {
+         en: { cap: "Figure 2: Unified Directionality (Major/Minor)", cCenter: "Center: C", aCenter: "Center: A", sharps: "Sharps", flats: "Flats" },
+         "zh-TW": { cap: "圖 2：大小調的統一方向性", cCenter: "中心：C", aCenter: "中心：A", sharps: "升記號", flats: "降記號" },
+         de: { cap: "Abb. 2: Einheitliche Richtungsabhängigkeit", cCenter: "Zentrum: C", aCenter: "Zentrum: A", sharps: "Kreuze", flats: "Bs" },
+         fr: { cap: "Fig. 2 : Directionnalité unifiée", cCenter: "Centre : Do", aCenter: "Centre : La", sharps: "Dièses", flats: "Bémols" },
+         it: { cap: "Fig. 2: Direzionalità unificata", cCenter: "Centro: Do", aCenter: "Centro: La", sharps: "Diesis", flats: "Bemolli" },
+         ru: { cap: "Рис. 2: Единая направленность", cCenter: "Центр: C", aCenter: "Центр: A", sharps: "Диезы", flats: "Бемоли" },
+         ja: { cap: "図2：統一された方向性", cCenter: "中心：C", aCenter: "中心：A", sharps: "シャープ", flats: "フラット" }
+      };
+      const t = caps[currentLang] || caps['en'];
+
+      host.innerHTML = `
+        <div class="fig2">
+          <div class="fig2-caption">${t.cap}</div>
+          <div class="fig2-grid">
+            <div class="fig2-card">
+              <div class="fig2-subhead"><div class="fig2-subtitle">${t.cCenter}</div><div class="fig2-direction"><span>${t.sharps}</span><span class="arrow">→</span></div></div>
+              <div class="fig2-row"><div class="mini-wrapper"><div class="mini-piano" id="fig2MajorSharps"></div></div></div>
+            </div>
+            <div class="fig2-card">
+              <div class="fig2-subhead"><div class="fig2-subtitle">${t.aCenter}</div><div class="fig2-direction"><span>${t.sharps}</span><span class="arrow">→</span></div></div>
+              <div class="fig2-row"><div class="mini-wrapper"><div class="mini-piano" id="fig2MinorSharps"></div></div></div>
+            </div>
+            <div class="fig2-card">
+              <div class="fig2-subhead"><div class="fig2-subtitle">${t.cCenter}</div><div class="fig2-direction left"><span class="arrow">←</span><span>${t.flats}</span></div></div>
+              <div class="fig2-row"><div class="mini-wrapper"><div class="mini-piano" id="fig2MajorFlats"></div></div></div>
+            </div>
+            <div class="fig2-card">
+              <div class="fig2-subhead"><div class="fig2-subtitle">${t.aCenter}</div><div class="fig2-direction left"><span class="arrow">←</span><span>${t.flats}</span></div></div>
+              <div class="fig2-row"><div class="mini-wrapper"><div class="mini-piano" id="fig2MinorFlats"></div></div></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderStaticPiano('fig2MajorSharps', modeDefs.majorSharps, { rangeStart:'C4', rangeEnd:'C#5', accidental:'sharp' });
+      renderStaticPiano('fig2MinorSharps', modeDefs.minorSharps, { rangeStart:'A4', rangeEnd:'A#5', accidental:'sharp' });
+      renderStaticPiano('fig2MajorFlats',  modeDefs.majorFlats,  { rangeStart:'Cb4', rangeEnd:'C5', accidental:'flat'  });
+      renderStaticPiano('fig2MinorFlats',  modeDefs.minorFlats,  { rangeStart:'G4', rangeEnd:'A5', accidental:'flat'  });
+    }
+
+    // --- Helpers (Key Gen, etc.) ---
+
+    function noteToMidi(noteStr) {
+        const m = noteStr.match(/^([A-G])((?:#{1,2}|b{1,2})?)(-?\d+)$/);
+        if (!m) return null;
+        const letter = m[1];
+        const acc = m[2] || '';
+        const octave = parseInt(m[3], 10);
+        const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter];
+        let alter = 0;
+        if (acc === '#') alter = 1; else if (acc === '##') alter = 2;
+        else if (acc === 'b') alter = -1; else if (acc === 'bb') alter = -2;
+        return (octave + 1) * 12 + base + alter;
+    }
+
+    function midiToNote(midi, accidentalStyle) {
+        const pc = ((midi % 12) + 12) % 12;
+        const octave = Math.floor(midi / 12) - 1;
+        const sharpNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const flatNames  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+        const name = (accidentalStyle === 'flat' ? flatNames : sharpNames)[pc];
+        return `${name}${octave}`;
+    }
+
+    function isBlackKey(midi) {
+        const pc = ((midi % 12) + 12) % 12;
+        return [1, 3, 6, 8, 10].includes(pc);
+    }
+
+    function buildMidiMap(mapObj) {
+        const out = {};
+        for (const [note, num] of Object.entries(mapObj)) {
+            const midi = noteToMidi(note);
+            if (midi !== null) out[midi] = { num, labelNote: note };
+        }
+        return out;
+    }
+
+    function generatePianoKeys(startNote, endNote, accidentalStyle) {
+        const startMidi = noteToMidi(startNote);
+        const endMidi = noteToMidi(endNote);
+        if (startMidi === null || endMidi === null) return [];
+        const keys = [];
+        for (let m = startMidi; m <= endMidi; m++) {
+            keys.push({
+                note: midiToNote(m, accidentalStyle),
+                type: isBlackKey(m) ? 'black' : 'white'
+            });
+        }
+        return keys;
+    }
+
+    function formatNoteForDisplay(noteWithOctave) {
+        return noteWithOctave.replace(/-?\d+$/, '').replace(/#/g, '♯').replace(/b/g, '♭');
+    }
+
+    function renderStaticPiano(targetId, def, opts = {}) {
+        const el = document.getElementById(targetId);
+        if (!el) return;
+        el.innerHTML = '';
+        const rangeStart = opts.rangeStart || def.rangeStart;
+        const rangeEnd = opts.rangeEnd || def.rangeEnd;
+        const accidental = opts.accidental || def.accidental;
+        const keys = generatePianoKeys(rangeStart, rangeEnd, accidental);
+        const midiMap = buildMidiMap(def.map);
+
+        keys.forEach((keyData) => {
+            const keyEl = document.createElement('div');
+            keyEl.className = `key ${keyData.type}`;
+            const midi = noteToMidi(keyData.note);
+            const hit = (midi !== null) ? midiMap[midi] : null;
+
+            if (hit) {
+                const num = hit.num;
+                keyEl.classList.add((num % 2 === 0) ? 'tonic-even' : 'tonic-odd');
+                const noteSpan = document.createElement('span');
+                noteSpan.className = 'note-tag';
+                noteSpan.textContent = formatNoteForDisplay(hit.labelNote);
+                keyEl.appendChild(noteSpan);
+                const numSpan = document.createElement('span');
+                numSpan.className = 'num-tag';
+                numSpan.textContent = num;
+                keyEl.appendChild(numSpan);
+            } else {
+                keyEl.style.opacity = '0.35';
+            }
+            el.appendChild(keyEl);
+        });
+    }
+
+    function renderStaticPianoWithIntervals(targetId, def, uiData, opts = {}){
+        renderStaticPiano(targetId, def, opts);
+        // Add intervals
+        const el = document.getElementById(targetId);
+        const midiToEl = {};
+        const keys = el.querySelectorAll('.key');
+        
+        // Need to remap midi to element for interval calculation
+        // Since we didn't save it in renderStaticPiano, we reconstruct quickly:
+        const rangeStart = opts.rangeStart || def.rangeStart;
+        const startMidi = noteToMidi(rangeStart);
+        keys.forEach((k, i) => {
+            midiToEl[startMidi + i] = k;
+        });
+        
+        // Render intervals strictly based on sequence
+        // Note: For figure 1, we only want intervals between the 8 sequence notes
+        renderIntervalsOnMiniPiano(el, def, midiToEl, uiData);
+    }
+
+    function renderIntervalsOnMiniPiano(pianoEl, def, midiToEl, uiData){
+        const seq = def.sequence;
+        const layer = document.createElement('div');
+        layer.className = 'interval-layer';
+        pianoEl.appendChild(layer);
+
+        for (let i = 0; i < seq.length - 1; i++){
+            const m1 = noteToMidi(seq[i]);
+            const m2 = noteToMidi(seq[i+1]);
+            const e1 = midiToEl[m1];
+            const e2 = midiToEl[m2];
+            if (!e1 || !e2) continue;
+
+            const x1 = e1.offsetLeft + e1.offsetWidth / 2;
+            const x2 = e2.offsetLeft + e2.offsetWidth / 2;
+            const mid = (x1 + x2) / 2;
+            const delta = Math.abs(m2 - m1);
+            const isHalf = (delta === 1);
+
+            const n1 = def.map[seq[i]];
+            const n2 = def.map[seq[i+1]];
+            let groupClass = '';
+            if (typeof n1 === 'number' && typeof n2 === 'number') {
+                if ((n1 % 2) === (n2 % 2)) groupClass = (n1 % 2 === 0) ? 'even' : 'odd';
+                else groupClass = 'transition';
+            }
+
+            const label = document.createElement('div');
+            label.className = `interval-label ${groupClass}`;
+            label.textContent = isHalf ? uiData.termHalfStep : uiData.termWholeStep;
+            label.style.left = `${mid}px`;
+            layer.appendChild(label);
+        }
+    }
+
+    function drawSingleKeySignature(containerId, keyName) {
+        const div = document.getElementById(containerId);
+        if (!div) return;
+        div.innerHTML = '';
+        const VF = Vex.Flow;
+        const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+        renderer.resize(165, 100);
+        const context = renderer.getContext();
+        const stave = new VF.Stave(0, 0, 155);
+        stave.addClef('treble');
+        try { stave.addKeySignature(keyName); } catch (e) {}
+        stave.setContext(context).draw();
+    }
+
+    // Start
+    init();
+
+</script>
+</body>
+</html>
